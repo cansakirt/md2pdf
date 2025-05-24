@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>md2.pages.dev - md2pdf - Markdown to PDF</title>
+
+        <!-- Meta tags for social sharing -->
+        <meta
+            name="og:image"
+            content="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><rect width='200' height='200' fill='%23e9e9e9'/><text x='100' y='100' text-anchor='middle' dy='.3em' font-family='Arial' font-size='20'>md2pdf</text></svg>"
+        />
+        <meta name="og:title" content="md2.pages.dev - md2pdf - Markdown to PDF" />
+        <meta
+            name="og:description"
+            content="Awesome Markdown to PDF! Still upload resume.md to stranger server? Try this Offline Web App!"
+        />
+        <meta name="Description" content="Offline Markdown to PDF! Choose & Edit & Transform without any network requests." />
+
+        <!-- External Libraries - Latest Versions -->
+        <!-- markdown-it 14.1.0 -->
+        <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
+
+        <!-- KaTeX 0.16.22 for math rendering -->
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css"
+            integrity="sha384-5TcZemv2l/9On385z///+d7MSYlvIEw9FuZTIdZ14vJLqWphw7e7ZPuOiCHJcFCP"
+            crossorigin="anonymous"
+        />
+        <script
+            defer
+            src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js"
+            integrity="sha384-cMkvdD8LoxVzGF/RPUKAcvmm49FQ0oxwDF3BGKtDXcEc+T1b2N+teh/OJfpU0jr6"
+            crossorigin="anonymous"
+        ></script>
+        <script
+            defer
+            src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js"
+            integrity="sha384-hCXGrW6PitJEwbkoStFjeJxv+fSOOQKOPbJxSfM6G5sWZjAyWhXiTIIAmQqnlLlh"
+            crossorigin="anonymous"
+        ></script>
+
+        <!-- Highlight.js 11.11.1 for code syntax highlighting -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css" />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+
+        <!-- GitHub Markdown CSS 5.8.1 -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5.8.1/github-markdown-light.min.css" />
+
+        <!-- Normalize CSS 8.0.1 -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css" />
+
+        <style>
+            /* Base Styles */
+            html,
+            body,
+            #root {
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+
+            body {
+                line-height: 1.6;
+                max-width: 100vw;
+                overflow-x: hidden;
+                overflow-y: hidden;
+                font-family: sans-serif;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            #md2pdf-app {
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+            }
+
+            /* Header Styles */
+            .header {
+                flex-shrink: 0;
+                overflow: auto;
+                -webkit-overflow-scrolling: touch;
+                user-select: none;
+                padding-left: 5px;
+                padding-right: 5px;
+                color: black;
+                background-color: rgb(233, 233, 233);
+                display: flex;
+                align-items: center;
+                height: 40px;
+            }
+
+            .project {
+                font-weight: bold;
+                margin: 5px;
+                flex-shrink: 0;
+                height: 20px;
+                line-height: 20px;
+            }
+
+            .menu {
+                width: 100%;
+                height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: flex-end;
+            }
+
+            .button {
+                height: 80%;
+                margin: 0;
+                display: flex;
+                align-items: center;
+                margin-left: 3px;
+                border-radius: 3px;
+                border: 1px solid black;
+                padding: 10px;
+                cursor: pointer;
+                background: white;
+                font-size: 14px;
+            }
+
+            .button:hover {
+                background-color: #f0f0f0;
+            }
+
+            .button span {
+                margin-right: 5px;
+            }
+
+            /* Main content area */
+            .markdown-container {
+                height: calc(100% - 40px);
+                display: flex;
+                position: relative;
+            }
+
+            .markdown-container.drag-overlay::after {
+                content: "";
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(9, 132, 227, 0.1);
+                z-index: 1000;
+                pointer-events: none;
+            }
+
+            .markdown-container.file-over {
+                opacity: 0.5;
+            }
+
+            /* Editor Styles */
+            .editor {
+                flex-shrink: 0;
+                height: 100%;
+                width: 50%;
+                overflow: hidden;
+            }
+
+            /* Drag Bar Styles */
+            .drag-bar {
+                width: 15px;
+                flex-shrink: 0;
+                background-color: rgb(233, 233, 233);
+                height: 100%;
+                cursor: col-resize;
+                user-select: none;
+                transition: background-color 0.2s;
+            }
+
+            .drag-bar:hover,
+            .drag-bar.dragging {
+                background-color: #0984e3;
+            }
+
+            /* Preview Styles */
+            .preview {
+                overflow-y: scroll;
+                -webkit-overflow-scrolling: touch;
+                width: 100%;
+                padding: 10px;
+                background: white;
+            }
+
+            .preview.loading {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            /* Loading Animation */
+            .loading-dots {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .loading-dots p {
+                margin: 5px;
+                width: 5px;
+                height: 15px;
+                border-radius: 100%;
+                background-color: rgba(0, 0, 0, 0.5);
+                animation: load 0.5s infinite linear;
+            }
+
+            .loading-dots p:nth-child(1) {
+                animation-delay: 0.167s;
+            }
+
+            .loading-dots p:nth-child(2) {
+                animation-delay: 0.333s;
+            }
+
+            @keyframes load {
+                25% {
+                    transform: translateY(-10px);
+                }
+                75% {
+                    transform: translateY(10px);
+                }
+            }
+
+            /* File input styles */
+            .file-input {
+                display: none;
+            }
+
+            .file-label {
+                position: absolute;
+                opacity: 0;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 2;
+                cursor: pointer;
+            }
+
+            .clear-button {
+                color: red;
+            }
+
+            .upload-button {
+                position: relative;
+            }
+
+            /* GitHub button styles */
+            .github-button {
+                display: block;
+                border: none;
+                height: 20px;
+                width: 100px;
+            }
+
+            /* Print styles */
+            @media print {
+                .no-print,
+                .no-print * {
+                    display: none !important;
+                }
+
+                #md2pdf-app,
+                .markdown-container,
+                .preview {
+                    display: block !important;
+                    height: auto !important;
+                }
+
+                .preview {
+                    padding: 0;
+                    overflow-y: hidden;
+                }
+            }
+
+            /* Mobile responsiveness */
+            @media (max-width: 768px) {
+                .markdown-container {
+                    flex-direction: column;
+                }
+
+                .editor {
+                    width: 100% !important;
+                    height: 50%;
+                }
+
+                .drag-bar {
+                    width: 100%;
+                    height: 15px;
+                    cursor: row-resize;
+                }
+
+                .menu {
+                    flex-wrap: wrap;
+                }
+
+                .button {
+                    margin: 2px;
+                    font-size: 12px;
+                    padding: 8px;
+                }
+            }
+
+            /* KaTeX math styles */
+            .katex {
+                font-size: 1.1em;
+            }
+
+            /* Table styles enhancement */
+            .markdown-body table {
+                border-collapse: collapse;
+                margin: 1em 0;
+            }
+
+            .markdown-body table th,
+            .markdown-body table td {
+                border: 1px solid #d0d7de;
+                padding: 6px 13px;
+            }
+
+            .markdown-body table th {
+                background-color: #f6f8fa;
+                font-weight: 600;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="md2pdf-app">
+            <!-- Header -->
+            <header class="header no-print">
+                <p class="project">md2pdf</p>
+
+                <div class="menu">
+                    <div class="button clear-button" style="margin: auto">
+                        <span>🗑️</span>
+                        <span>Clear</span>
+                    </div>
+                    <div class="button upload-button">
+                        <input id="mdFile" type="file" class="file-input" accept=".md,.txt" />
+                        <label for="mdFile" class="file-label"></label>
+                        <span>📁</span>
+                        <span>Choose File</span>
+                    </div>
+
+                    <div class="button download-button" style="color: green">
+                        <span>🎉</span>
+                        <span>Print</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content -->
+            <div class="markdown-container" id="markdownContainer">
+                <!-- Editor -->
+                <div class="editor no-print" id="editor"></div>
+
+                <!-- Drag Bar -->
+                <div class="drag-bar no-print" id="dragBar"></div>
+
+                <!-- Preview -->
+                <div class="preview markdown-body" id="preview">
+                    <div class="loading-dots">
+                        <p></p>
+                        <p></p>
+                        <p></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script type="module">
+            // Initial markdown text
+            const initialText = `# Markdown2PDF
+https://md2.pages.dev/
+> Awesome Markdown to PDF!
+\`\`\`diff
+- Online? Upload resume.md to stranger server?
++ Try Offline Web App!
+\`\`\`
+
+## How to use md2pdf?
+1. Click button choose \`.md\` file.
+2. Edit in editor (left panel).
+3. Click **Print**!
+4. Switch 'Destination' to **Save as PDF**.
+4. **Chrome recommended**
+
+## Tips
+- \`Resize\` the layout what you want.
+- After click \`Print\` button, inverse the checkbox of **'Headers and Footers'**.
+- **反選頁首與頁尾**.
+
+## What's special?
+- You can use <span style="color:#0984e3">html</span> tag!
+<blockquote>Hey I'm in blockquote!</blockquote>
+
+## Math Support (LaTeX)
+Inline math: $E = mc^2$
+
+Block math:
+$$\\sum_{i=1}^{n} x_i = x_1 + x_2 + \\cdots + x_n$$
+
+## Tables
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Markdown | ✅ | Full support |
+| Math/LaTeX | ✅ | KaTeX rendering |
+| Tables | ✅ | GitHub flavored |
+| Code highlight | ✅ | Multiple languages |
+
+## Forked from
+- Github: [@md2pdf](https://github.com/cansakirt/md2pdf)
+- Project: md2pdf (Markdown2PDF)
+- What about me: ☕ 、 👨🏻‍💻️、 🍕、 🎞️
+
+## Code Like this
+\`\`\`javascript
+// index.js
+function Hello(){
+    console.log('World!')
+}
+Hello();
+\`\`\`
+
+or this
+
+\`\`\`python
+# main.py
+def awesome():
+    print('awesome!')
+awesome()
+\`\`\`
+`;
+
+            // Global variables
+            let editorView;
+            let isDragging = false;
+            let startX = 0;
+            let startWidth = 0;
+            let markdownIt;
+            let updateTimer;
+
+            // Initialize markdown-it with plugins
+            function initMarkdown() {
+                markdownIt = window.markdownit({
+                    html: true,
+                    linkify: true,
+                    typographer: true,
+                    highlight: function (str, lang) {
+                        if (lang && hljs.getLanguage(lang)) {
+                            try {
+                                return hljs.highlight(str, { language: lang }).value;
+                            } catch (err) {
+                                console.error("Highlight.js error:", err);
+                            }
+                        }
+                        try {
+                            return hljs.highlightAuto(str).value;
+                        } catch (err) {
+                            console.error("Highlight.js auto error:", err);
+                        }
+                        return "";
+                    },
+                });
+
+                // Add KaTeX plugin if available
+                if (window.markdownitKatex) {
+                    markdownIt.use(window.markdownitKatex, {
+                        throwOnError: false,
+                        errorColor: "#cc0000",
+                    });
+                }
+            }
+
+            async function initEditor() {
+                const editorElement = document.getElementById("editor");
+                const textarea = document.createElement("textarea");
+                textarea.value = initialText;
+                textarea.style.width = "100%";
+                textarea.style.height = "100%";
+                textarea.style.fontFamily = "Monaco, Menlo, monospace";
+                textarea.style.fontSize = "14px";
+                textarea.style.border = "none";
+                textarea.style.outline = "none";
+                textarea.style.resize = "none";
+                textarea.style.padding = "10px";
+                textarea.style.backgroundColor = "#282c34";
+                textarea.style.color = "#abb2bf";
+
+                editorElement.appendChild(textarea);
+
+                // Create a simple editor object
+                editorView = {
+                    state: {
+                        doc: {
+                            length: textarea.value.length,
+                            toString: () => textarea.value,
+                        },
+                    },
+                    dispatch: (spec) => {
+                        if (spec.changes) {
+                            const { from, to, insert } = spec.changes;
+                            const value = textarea.value;
+                            textarea.value = value.substring(0, from) + insert + value.substring(to);
+                            updatePreview(textarea.value);
+                        }
+                    },
+                };
+
+                textarea.addEventListener("input", (e) => {
+                    clearTimeout(updateTimer);
+                    updateTimer = setTimeout(() => {
+                        updatePreview(e.target.value);
+                    }, 300);
+                });
+
+                updatePreview(initialText);
+            }
+
+            // Update preview with markdown content
+            function updatePreview(text) {
+                const preview = document.getElementById("preview");
+
+                try {
+                    const html = markdownIt.render(text);
+                    preview.innerHTML = html;
+
+                    // Auto-render math using KaTeX if available
+                    if (window.renderMathInElement) {
+                        renderMathInElement(preview, {
+                            delimiters: [
+                                { left: "$$", right: "$$", display: true },
+                                { left: "$", right: "$", display: false },
+                            ],
+                            throwOnError: false,
+                        });
+                    }
+                } catch (error) {
+                    console.error("Preview error:", error);
+                    preview.innerHTML = `<div style="color: red; padding: 20px;">
+                                <h3>Preview Error</h3>
+                                <p>${error.message}</p>
+                                <button onclick="window.location.reload()" style="padding: 5px 10px; margin-top: 10px; cursor: pointer;">
+                                    Reload Page
+                                </button>
+                            </div>`;
+                }
+            }
+
+            // Handle file upload
+            function handleFileUpload(file) {
+                if (file && file.name) {
+                    // if (file && file.name && /\.(md)$/i.test(file.name)) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        const content = e.target.result;
+                        if (editorView.dispatch) {
+                            console.log("editorView :>> ", editorView);
+                            editorView.dispatch({
+                                changes: {
+                                    from: 0,
+                                    to: editorView.state.doc.length,
+                                    insert: content,
+                                },
+                            });
+                        }
+                        // Also update textarea if it exists (fallback mode)
+                        const textarea = document.querySelector("#editor textarea");
+                        if (textarea) {
+                            textarea.value = content;
+                            updatePreview(content);
+                        }
+                    };
+                    reader.readAsText(file);
+                } else {
+                    alert("Please select a valid text file");
+                }
+            }
+
+            // Handle drag and drop
+            function initDragDrop() {
+                const container = document.getElementById("markdownContainer");
+
+                const stopDefault = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                };
+
+                container.addEventListener("dragenter", stopDefault);
+                container.addEventListener("dragover", (e) => {
+                    stopDefault(e);
+                    container.classList.add("file-over");
+                });
+
+                container.addEventListener("dragleave", (e) => {
+                    stopDefault(e);
+                    if (!container.contains(e.relatedTarget)) {
+                        container.classList.remove("file-over");
+                    }
+                });
+
+                container.addEventListener("drop", (e) => {
+                    stopDefault(e);
+                    container.classList.remove("file-over");
+
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        handleFileUpload(files[0]);
+                    }
+                });
+            }
+
+            // Handle panel resizing
+            function initResizing() {
+                const dragBar = document.getElementById("dragBar");
+                const editorPanel = document.querySelector(".editor");
+                const container = document.getElementById("markdownContainer");
+
+                dragBar.addEventListener("mousedown", (e) => {
+                    isDragging = true;
+                    startX = e.pageX;
+                    startWidth = editorPanel.offsetWidth;
+                    dragBar.classList.add("dragging");
+                    container.classList.add("drag-overlay");
+                });
+
+                document.addEventListener("mousemove", (e) => {
+                    if (!isDragging) return;
+
+                    const newWidth = startWidth + (e.pageX - startX);
+                    const containerWidth = container.offsetWidth - 15; // subtract drag bar width
+                    const minWidth = 200;
+                    const maxWidth = containerWidth - 200;
+
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        editorPanel.style.width = newWidth + "px";
+                    }
+                });
+
+                document.addEventListener("mouseup", () => {
+                    if (isDragging) {
+                        isDragging = false;
+                        dragBar.classList.remove("dragging");
+                        container.classList.remove("drag-overlay");
+                    }
+                });
+            }
+
+            // Handle print/PDF export
+            function handleTransform() {
+                // Get potential title from the first h1 in preview
+                const preview = document.getElementById("preview");
+                const h1 = preview.querySelector("h1");
+                let candidateTitle = "";
+
+                if (h1) {
+                    candidateTitle = h1.textContent;
+                    // Temporarily change document title
+                    const currentTitle = document.title;
+                    document.title = candidateTitle;
+
+                    // Schedule title restoration
+                    requestAnimationFrame(() => {
+                        document.title = currentTitle;
+                    });
+                }
+
+                window.print();
+            }
+
+            // Handle clear button
+            function handleClear() {
+                if (confirm("Are you sure you want to clear all content?")) {
+                    if (editorView.dispatch) {
+                        editorView.dispatch({
+                            changes: {
+                                from: 0,
+                                to: editorView.state.doc.length,
+                                insert: "",
+                            },
+                        });
+                    }
+                    // Also clear textarea if it exists (fallback mode)
+                    const textarea = document.querySelector("#editor textarea");
+                    if (textarea) {
+                        textarea.value = "";
+                        updatePreview("");
+                    }
+                }
+            }
+
+            // Prevent accidental page reload
+            function initPageProtection() {
+                window.addEventListener("beforeunload", (e) => {
+                    const msg = "Please check and backup the change before refresh or leave.";
+                    e.returnValue = msg;
+                    return msg;
+                });
+
+                // Prevent file drops on window
+                window.addEventListener("drop", (e) => e.preventDefault());
+                window.addEventListener("dragover", (e) => e.preventDefault());
+            }
+
+            // Initialize everything when page loads
+            document.addEventListener("DOMContentLoaded", async function () {
+                // Wait for libraries to load
+                const checkLibraries = () => {
+                    if (typeof markdownit !== "undefined" && typeof hljs !== "undefined" && typeof katex !== "undefined") {
+                        return true;
+                    }
+                    return false;
+                };
+
+                // Wait for libraries
+                while (!checkLibraries()) {
+                    await new Promise((resolve) => setTimeout(resolve, 100));
+                }
+
+                initMarkdown();
+                await initEditor();
+                initDragDrop();
+                initResizing();
+                initPageProtection();
+
+                // Event listeners
+                document.getElementById("mdFile").addEventListener("change", (e) => {
+                    if (e.target.files.length > 0) {
+                        handleFileUpload(e.target.files[0]);
+                    }
+                });
+
+                document.querySelector(".download-button").addEventListener("click", handleTransform);
+                document.querySelector(".clear-button").addEventListener("click", handleClear);
+            });
+        </script>
+    </body>
+</html>
